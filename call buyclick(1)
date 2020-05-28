@@ -1,0 +1,85 @@
+
+ 
+ DROP PROCEDURE IF EXISTS buyclick;
+DELIMITER //
+CREATE PROCEDURE buyclick(in var1 LONGTEXT)
+
+BEGIN
+DECLARE $current_active,$active_switch,$after_purchase,$clickmult,$current_cash,$current_time,$current_spent,$current_mult,$current_tmult,$purchase_cost,$purchase_diff,$purchase_time,$system,$time_case,$time_cost,$total_cash,$total_spent,$total_tmult,$total_time LONGTEXT; 
+			-- ACTIVE
+			SET	$clickmult = (select clickmult from click where active=1),
+				$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
+                $current_mult = (select mult from click WHERE active=1),
+                $current_tmult = (select sum($current_time*$current_mult)),
+                $current_spent = (select cspent from click where active=1),
+				$current_cash = (select sum($current_tmult-$current_spent)),
+                $purchase_cost = (select sum(50*var1)),
+                $after_purchase = (select sum($current_spent + $purchase_cost)),
+                $current_active = (select id from click where active=1),
+                $active_switch = (select id from click where id>$current_active limit 1);
+
+                
+                
+			-- click         
+			UPDATE click SET time = $current_time, 
+                             tmult = $current_tmult,
+                             cash = concat('$',format($current_cash,2)),
+                             updated_at = current_timestamp() WHERE active = 1;
+            
+            
+			-- GLOBAL
+            SET $total_time = (select sum(time) from click where id!=1),
+				$total_tmult = (select sum(tmult) from click WHERE id!=1),
+				$total_spent = (select sum(cspent) from click WHERE id!=1),
+                $total_cash = $total_tmult-$total_spent;
+                
+			UPDATE click SET cash = concat('$',format($total_cash,2)), 
+                             time = $total_time,
+                             tmult = $total_tmult,
+                             cspent = $total_spent,
+                             updated_at = current_timestamp() WHERE id=1;  
+
+
+	-- SUCCESS --
+case when $total_cash >= $purchase_cost THEN
+			update click set cspent = cspent + $after_purchase, clickmult = clickmult + 1*var1 WHERE active = 1;
+			-- GLOBAL
+            SET $total_time = (select sum(time) from click where id!=1),
+				$total_tmult = (select sum(tmult) from click WHERE id!=1),
+				$total_spent = (select sum(cspent) from click WHERE id!=1),
+                $total_cash = (select sum($total_tmult-$total_spent)),
+                $clickmult = (select clickmult from click where active = 1);
+                
+			update click set clickmult = $clickmult where id=$active_switch;
+                
+			UPDATE click SET cash = concat('$',format($total_cash,2)), 
+                             time = $total_time,
+                             tmult = $total_tmult,
+                             cspent = $total_spent,
+                             updated_at = current_timestamp() WHERE id=1;  
+			
+           SET  $system = concat('Purchase successful. ',var1,' additional click(s) for $',format($purchase_cost,2),'.');
+        
+	-- FAILURE--
+	when $total_cash < $purchase_cost THEN 											
+                SET $total_cash = $total_tmult-$total_spent,
+                    $purchase_diff = (select sum($total_cash-$purchase_cost)),
+					$purchase_time = (select sum($purchase_diff/$current_mult));
+					
+                    
+                   SET $time_case = (SELECT case 
+		
+     
+   when  $purchase_time >=3600 and $purchase_time <216000 THEN (select time_format(sec_to_time($purchase_time),'%H hours, %i minutes, %S seconds.'))
+		WHEN $purchase_time >=60 AND $purchase_time<3600 THEN (select time_format(sec_to_time($purchase_time),'%i minutes, %S seconds.'))
+			ELSE '1 minute.' end);
+                        
+																																																										
+                        
+		SET $system = concat('It looks like you are short by $',format($purchase_time,2),'.  Please wait ',format($purchase_time,0),'...');
+ else begin end;
+end case;
+select (concat('$',format($total_cash,2))) as 'cash', $current_spent, $purchase_cost, $system as '';
+
+end //
+delimiter ;	
