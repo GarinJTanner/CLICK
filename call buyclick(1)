@@ -5,66 +5,81 @@ DELIMITER //
 CREATE PROCEDURE buyclick(in var1 LONGTEXT)
 
 BEGIN
-DECLARE $current_active,$active_switch,$after_purchase,$clickmult,$current_cash,$current_time,$current_spent,$current_mult,$current_tmult,$purchase_cost,$purchase_diff,$purchase_time,$system,$time_case,$time_cost,$total_cash,$total_spent,$total_tmult,$total_time LONGTEXT; 
-			-- ACTIVE
-			SET	$clickmult = (select clickmult from click where active=1),
-				$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
-                $current_mult = (select mult from click WHERE active=1),
-                $current_tmult = (select sum($current_time*$current_mult)),
-                $current_spent = (select cspent from click where active=1),
-				$current_cash = (select sum($current_tmult-$current_spent)),
-                $purchase_cost = (select sum(50*var1)),
-                $after_purchase = (select sum($current_spent + $purchase_cost)),
-                $current_active = (select id from click where active=1),
-                $active_switch = (select id from click where id>$current_active limit 1);
+DECLARE $clickmult LONGTEXT;
+DECLARE $current_cash LONGTEXT;
+DECLARE $current_level LONGTEXT;
+DECLARE $current_time LONGTEXT;
+DECLARE $current_spent LONGTEXT;
+DECLARE $current_mult LONGTEXT;	
+DECLARE $purchase_cost BIGINT;
+DECLARE $purchase_diff BIGINT;
+DECLARE $purchase_time BIGINT;
+DECLARE $system LONGTEXT;
+DECLARE $time_case mediumtext;
+DECLARE $time_cost BIGINT ;
+DECLARE $total_cash LONGTEXT;
+DECLARE $total_spent LONGTEXT;
+DECLARE $total_tmult LONGTEXT;
+DECLARE $total_time LONGTEXT	; 
+DECLARE $total_mult LONGTEXT;
+DECLARE $wallet LONGTEXT;
 
+
+	-- ACTIVE
+       		SET $current_time = (select timestampdiff(second,created_at, current_timestamp()) from click WHERE active=1),
+                $current_level = (select level from click where active=1),
+                $clickmult =  (select clickmult from click where active=1),
+                $current_mult = (select mult from click WHERE active=1),
+                $current_spent = (select cspent from click where active=1),
                 
-                
-			-- click         
-			UPDATE click SET time = $current_time, 
-                             tmult = $current_tmult,
-                             cash = concat('$',format($current_cash,2)),
-                             updated_at = current_timestamp() WHERE active = 1;
-            
-            
-			-- GLOBAL
+                $current_cash = (select sum($total_tmult-$current_spent));
+			
+			UPDATE click SET clickmult = $clickmult, time = $current_time, mult = $current_mult, tmult = $total_tmult, cash = (select concat('$',(format($current_cash,2)))), cash = $current_cash WHERE active = 1;
+       
+       
+                    
+	-- TOTAL   
+       
             SET $total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-				$total_spent = (select sum(cspent) from click WHERE id!=1),
-                $total_cash = $total_tmult-$total_spent;
-                
-			UPDATE click SET cash = concat('$',format($total_cash,2)), 
-                             time = $total_time,
-                             tmult = $total_tmult,
-                             cspent = $total_spent,
-                             updated_at = current_timestamp() WHERE id=1;  
+				$total_mult = (select sum(tmult) from click WHERE id!=1),
+                $total_tmult = ($current_time*$current_mult),
+                $total_spent = (select sum(cspent) from click WHERE id!=1),
+                $total_cash = (select sum($total_mult-$total_spent)),
+                $wallet = CONCAT('$',(FORMAT($total_cash,2)));
+
+
+			UPDATE click SET time = $total_time, tmult = $total_mult, cash = $wallet, cash = $total_cash, cspent = $total_spent WHERE id=1;           
+
 
 
 	-- SUCCESS --
-case when $total_cash >= $purchase_cost THEN
-			update click set cspent = cspent + $after_purchase, clickmult = clickmult + 1*var1 WHERE active = 1;
-			-- GLOBAL
-            SET $total_time = (select sum(time) from click where id!=1),
+case when $total_cash >= 50*var1 THEN
+			update click set cspent = cspent + 50*var1, clickmult = clickmult + 1*var1, cash = (select concat('$',(format($current_cash,2)))) WHERE active = 1;
+			
+           SET $total_mult = (select sum($current_time*$current_mult)),
+				$current_cash = (select sum($total_tmult-$current_spent)),
+                $current_time = (select replace(sum($wallet-var1*50/$current_mult),'-','')),
+                $total_time = (select sum(time) from click where id!=1),
 				$total_tmult = (select sum(tmult) from click WHERE id!=1),
 				$total_spent = (select sum(cspent) from click WHERE id!=1),
                 $total_cash = (select sum($total_tmult-$total_spent)),
-                $clickmult = (select clickmult from click where active = 1);
-                
-			update click set clickmult = $clickmult where id=$active_switch;
-                
-			UPDATE click SET cash = concat('$',format($total_cash,2)), 
-                             time = $total_time,
-                             tmult = $total_tmult,
-                             cspent = $total_spent,
-                             updated_at = current_timestamp() WHERE id=1;  
-			
-           SET  $system = concat('Purchase successful. ',var1,' additional click(s) for $',format($purchase_cost,2),'.');
-        
+                $wallet = CONCAT('$',(FORMAT($total_cash,2))),
+                $system = concat('Purchase successful. ',format(var1,0),' additional click(s) for $',(select format(sum(50*var1),2)),'.');
+            
+			UPDATE click SET time = $total_time, tmult = $total_mult, cash = $wallet, cash = $total_cash, cspent = $total_spent+var1*50 WHERE id=1;           
+
 	-- FAILURE--
-	when $total_cash < $purchase_cost THEN 											
-                SET $total_cash = $total_tmult-$total_spent,
-                    $purchase_diff = (select sum($total_cash-$purchase_cost)),
-					$purchase_time = (select sum($purchase_diff/$current_mult));
+when $total_cash<50*var1 THEN 											
+                SET $current_time = (select timestampdiff(second,created_at, current_timestamp()) from click WHERE active=1),
+					$current_mult = (select mult from click where active=1),
+					$time_cost = (select replace(sum($total_cash-var1*50)/$current_mult,'-','')),
+                    $total_cash = (select sum($total_mult-$total_spent)),
+                    $total_spent = (select sum(cspent) from click WHERE id!=1),
+                    $purchase_cost = (select var1*50),
+
+                    $purchase_diff = (select sum($purchase_cost-$total_cash)),
+					$purchase_time = (select $purchase_diff/$current_mult),
+					$wallet = CONCAT('$',(select FORMAT($total_cash,2)));
 					
                     
                    SET $time_case = (SELECT case 
@@ -76,10 +91,11 @@ case when $total_cash >= $purchase_cost THEN
                         
 																																																										
                         
-		SET $system = concat('It looks like you are short by $',format($purchase_time,2),'.  Please wait ',format($purchase_time,0),'...');
+		SET $system = concat('It looks like you are short by $',(select format($purchase_diff,2)),'.  Please wait ',$time_case,'...');
  else begin end;
 end case;
-select (concat('$',format($total_cash,2))) as 'cash', $current_spent, $purchase_cost, $system as '';
+select 
+		concat(format(var1*50,2)) as 'total cost', concat('$',format($total_cash,2)) as'cash', $system as '';
 
 end //
 delimiter ;	
