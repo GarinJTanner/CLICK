@@ -1,109 +1,7 @@
 -- DEPLOY --
-create schema if not exists random_jg214_f;
-use random_jg214_f;
 
+drop procedure if exists restart;
 
-drop function if exists $;
-DELIMITER //
-create function $(VAR1 LONGTEXT)
-returns LONGTEXT
-deterministic
-begin 
-DECLARE str LONGTEXT;
-set str = concat('$',format(var1,2));
-return str;
-END //
-DELIMITER ;
-
- 
- DROP PROCEDURE IF EXISTS buyclick;
-DELIMITER //
-CREATE PROCEDURE buyclick(in var1 LONGTEXT)
-
-BEGIN
-DECLARE $current_active,$active_switch,$after_purchase,$clickmult,$current_cash,$current_time,$current_spent,$current_mult,$current_tmult,$purchase_cost,$purchase_diff,$purchase_time,$system,$time_case,$time_cost,$total_cash,$total_spent,$total_tmult,$total_time LONGTEXT; 
-			-- ACTIVE
-			SET	$clickmult = (select clickmult from click where active=1),
-				$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
-                $current_mult = (select mult from click WHERE active=1),
-                $current_tmult = (select sum($current_time*$current_mult)),
-                $current_spent = (select cspent from click where active=1),
-				$current_cash = (select sum($current_tmult-$current_spent)),
-                $purchase_cost = (select sum(50*var1)),
-                $after_purchase = (select sum($current_spent + $purchase_cost)),
-                $current_active = (select id from click where active=1),
-                $active_switch = (select id from click where id>$current_active limit 1);
-
-                
-			-- click         
-			UPDATE click SET time = $current_time, 
-                             tmult = $current_tmult,
-                             cash = concat('$',format($current_cash,2)),
-                             updated_at = current_timestamp() WHERE active = 1;
-            
-            
-			-- GLOBAL
-            SET $total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-				$total_spent = (select sum(cspent) from click WHERE id!=1),
-                $total_cash = $total_tmult-$total_spent;
-                
-			UPDATE click SET cash = concat('$',format($total_cash,2)), 
-                             time = $total_time,
-                             tmult = $total_tmult,
-                             cspent = $total_spent,
-                             updated_at = current_timestamp() WHERE id=1;  
-
-
-	-- SUCCESS --
-case when $total_cash >= $purchase_cost THEN
-			update click set cspent = cspent + $after_purchase, clickmult = clickmult + 1*var1 WHERE active = 1;
-			-- GLOBAL
-            SET $total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-				$total_spent = (select sum(cspent) from click WHERE id!=1),
-                $total_cash = (select sum($total_tmult-$total_spent)),
-                $clickmult = (select clickmult from click where active = 1);
-                
-			update click set clickmult = $clickmult where id=$active_switch;
-                
-			UPDATE click SET cash = concat('$',format($total_cash,2)), 
-                             time = $total_time,
-                             tmult = $total_tmult,
-                             cspent = $total_spent,
-                             updated_at = current_timestamp() WHERE id=1;  
-			
-           SET  $system = concat('Purchase successful. ',var1,' additional click(s) for $',format($purchase_cost,2),'.');
-        
-	-- FAILURE--
-	when $total_cash < $purchase_cost THEN 											
-                SET $total_cash = $total_tmult-$total_spent,
-                    $purchase_diff = (select sum($total_cash-$purchase_cost)),
-					$purchase_time = (select sum($purchase_diff/$current_mult));
-					
-                    
-                   SET $time_case = (SELECT case 
-		
-     
-   when  $purchase_time >=3600 and $purchase_time <216000 THEN (select time_format(sec_to_time($purchase_time),'%H hours, %i minutes, %S seconds.'))
-		WHEN $purchase_time >=60 AND $purchase_time<3600 THEN (select time_format(sec_to_time($purchase_time),'%i minutes, %S seconds.'))
-			ELSE '1 minute.' end);
-                        
-																																																										
-                        
-		SET $system = concat('It looks like you are short by $',format($purchase_time,2),'.  Please wait ',format($purchase_time,0),'...');
- else begin end;
-end case;
-select (concat('$',format($total_cash,2))) as 'cash', $current_spent, $purchase_cost, $system as '';
-
-end //
-delimiter ;	
-
-
-
-
-
-drop procedure restart;
 DELIMITER //
 CREATE PROCEDURE restart()
 BEGIN
@@ -143,26 +41,23 @@ end //
 DELIMITER ;
 call restart; 							
 
-
-
-
-
-
-
-
 -- CLICK --
 
+	
+    
+DROP PROCEDURE IF EXISTS click;
 DELIMITER //
 CREATE PROCEDURE click()
 begin 
-DECLARE $active,$active_switch,$autoclick,$autoclickamount,$autoclick_time,$clicks,$clicker,$click_count,$clickmult,$current_cash,$current_level,$current_mult,$current_spent,$current_time,$current_tmult,$next_level,$system,$thresh,$thresh1,$thresh2,$thresh3,$thresh4,$thresh_init,$thresh_next,$title,$total_cash,$total_spent,$total_time,$total_tmult LONGTEXT;
+DECLARE $active,$active_switch,$autoclick,$autoclickamount,$clicks,$clicker,$click_count,$clickmult,$current_cash,$current_level,$current_mult,$current_spent,$current_time,$current_tmult,$next_level,$system,$thresh,$thresh1,$thresh2,$thresh3,$thresh4,$thresh_init,$thresh_next,$title,$total_cash,$total_spent,$total_time,$total_tmult LONGTEXT;
+
+
 
 
 
 -- ACTIVE
 			SET	$autoclick = (select format(sum((select timestampdiff(second,updated_at,current_timestamp()) from click WHERE active=1)/10),0)),
 				$autoclickamount = (select autoclick from click where active=1),
-                $autoclick_time = (select updated_at from click where active=1),
 				$clickmult = (select clickmult from click where active=1),
 				$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
                 $current_mult = (select mult from click WHERE active=1),
@@ -213,7 +108,7 @@ CASE WHEN $autoclick >1 THEN
                 $total_cash = (select sum($total_tmult-$total_spent));
                 
 			UPDATE click SET clicks = $clicks, 
-							 cash = $($total_cash), 
+							 cash = concat('$',format($total_cash,2)), 
                              time = $total_time,
                              tmult = $total_tmult,
                              cspent = $total_spent
@@ -224,31 +119,32 @@ set $autoclick = (select autoclick from click where active=1);
 
 						   
 	CASE WHEN (select sum(clicks) from click where id!=1)>= $thresh4 and $thresh_init = 3 THEN
-                UPDATE click SET autoclick = $autoclick, clickmult = $clickmult, created_at = current_timestamp, THRESH = $thresh_next, level = $next_level, mult = $current_mult*10, thresh_init = 0, active=1 WHERE id=$active_switch;
+                UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, THRESH = $thresh_next, level = $next_level, mult = $current_mult*10, thresh_init = 0, active=1 WHERE id=$active_switch;
                 SET $system = 'LEVEL UP!';
                 insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$next_level,$clickmult,0,$thresh_next);
                 UPDATE click SET active=0 WHERE id=$active;
+                
                SET $thresh_init = (select thresh_init from click where id=$active_switch);
 
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh3 and $thresh_init = 2 THEN
 				SET $system = 'ADDED MULTIPLIER';
                 insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
-				UPDATE click SET autoclick = $autoclick, clickmult = $clickmult, created_at = current_timestamp, mult = $current_mult*3,thresh_init = 3, active = 1 WHERE id=$active_switch;
+				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, mult = $current_mult*5,thresh_init = 3, active=1 WHERE id=$active_switch;
                 UPDATE click SET active=0 WHERE id=$active;
                SET $thresh_init = (select thresh_init from click where id=$active_switch);
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh2 and $thresh_init = 1 THEN
 				SET $system = (select 'ADDED MULTIPLIER'); 
                 insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
-				UPDATE click SET autoclick = $autoclick, clickmult = $clickmult, created_at = current_timestamp, mult = $current_mult*2,thresh_init = 2, active = 1 WHERE id=$active_switch;
+				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, mult = $current_mult*2.5,thresh_init = 2, active=1 WHERE id=$active_switch;
                 UPDATE click SET active=0 WHERE id=$active;
                 SET $thresh_init = (select thresh_init from click where id=$active_switch);
             
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh1 and $thresh_init = 0 THEN
 				insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
-				UPDATE click SET autoclick = $autoclick, clickmult = $clickmult, created_at = current_timestamp, mult = $current_mult*1.5,thresh_init = 1, active = 1 WHERE id=$active_switch;	
+				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, mult = $current_mult*1.5,thresh_init = 1, active = 1 WHERE id=$active_switch;	
                 UPDATE click SET active=0 WHERE id=$active;
                 SET $system = (select 'You may now purchase clicks by typing "call buyclick(x)". Clicks are $50 each, enter the desired amount in (x)');
                 SET $thresh_init = (select thresh_init from click where id=$active_switch);
@@ -256,107 +152,107 @@ set $autoclick = (select autoclick from click where active=1);
             END CASE;
        
 case										
-		WHEN length($($total_cash))>=409 										THEN		 SET $title = 			('Centillionaire');	
-		WHEN length($($total_cash))>=405 AND length($($total_cash)) < 		409 THEN 		 SET $title = 			('Novemnonagintillionaire');	
-		WHEN length($($total_cash))>=401 AND length($($total_cash)) < 		405 THEN 		 SET $title = 			('Octononagintillionaire');	
-		WHEN length($($total_cash))>=397 AND length($($total_cash)) < 		401 THEN 		 SET $title = 			('Septennonagintillionaire');	
-		WHEN length($($total_cash))>=393 AND length($($total_cash)) < 		397 THEN 		 SET $title = 			('Sexnonagintillionaire');	
-		WHEN length($($total_cash))>=389 AND length($($total_cash)) < 		393 THEN 		 SET $title = 			('Quinnonagintillionaire');	
-		WHEN length($($total_cash))>=385 AND length($($total_cash)) < 		389 THEN 		 SET $title = 			('Quattuornonagintillionaire');	
-		WHEN length($($total_cash))>=381 AND length($($total_cash)) < 		385 THEN 		 SET $title = 			('Trenonagintillionaire');	
-		WHEN length($($total_cash))>=377 AND length($($total_cash)) < 		381 THEN 		 SET $title = 			('Duononagintillionaire');	
-		WHEN length($($total_cash))>=373 AND length($($total_cash)) < 		377 THEN 		 SET $title = 			('Unnonagintillionaire');	
-		WHEN length($($total_cash))>=369 AND length($($total_cash)) < 		373 THEN 		 SET $title = 			('Nonagintillionaire');	
-		WHEN length($($total_cash))>=365 AND length($($total_cash)) < 		369 THEN 		 SET $title = 			('Novemoctogintillionaire');	
-		WHEN length($($total_cash))>=361 AND length($($total_cash)) < 		365 THEN 		 SET $title = 			('Octooctogintillionaire');	
-		WHEN length($($total_cash))>=357 AND length($($total_cash)) < 		361 THEN 		 SET $title = 			('Septenoctogintillionaire');	
-		WHEN length($($total_cash))>=353 AND length($($total_cash)) < 		357 THEN 		 SET $title = 			('Sexoctogintillionaire');	
-		WHEN length($($total_cash))>=349 AND length($($total_cash)) < 		353 THEN 		 SET $title = 			('Quinoctogintillionaire');	
-		WHEN length($($total_cash))>=345 AND length($($total_cash)) < 		349 THEN 		 SET $title = 			('Quattuoroctogintillionaire');	
-		WHEN length($($total_cash))>=341 AND length($($total_cash)) < 		345 THEN 		 SET $title = 			('Treoctogintillionaire');	
-		WHEN length($($total_cash))>=337 AND length($($total_cash)) < 		341 THEN 		 SET $title = 			('Duooctogintillionaire');	
-		WHEN length($($total_cash))>=333 AND length($($total_cash)) < 		337 THEN 		 SET $title = 			('Unoctogintillionaire');	
-		WHEN length($($total_cash))>=329 AND length($($total_cash)) < 		333 THEN 		 SET $title = 			('Octogintillionaire');	
-		WHEN length($($total_cash))>=325 AND length($($total_cash)) < 		329 THEN 		 SET $title = 			('Novemseptuagintillionaire');	
-		WHEN length($($total_cash))>=321 AND length($($total_cash)) < 		325 THEN 		 SET $title = 			('Octoseptuagintillionaire');	
-		WHEN length($($total_cash))>=317 AND length($($total_cash)) < 		321 THEN 		 SET $title = 			('Septenseptuagintillionaire');	
-		WHEN length($($total_cash))>=313 AND length($($total_cash)) < 		317 THEN 		 SET $title = 			('Sexseptuagintillionaire');	
-		WHEN length($($total_cash))>=309 AND length($($total_cash)) < 		313 THEN 		 SET $title = 			('Quinseptuagintillionaire');	
-		WHEN length($($total_cash))>=305 AND length($($total_cash)) < 		309 THEN 		 SET $title = 			('Quattuorseptuagintillionaire');	
-		WHEN length($($total_cash))>=301 AND length($($total_cash)) < 		305 THEN 		 SET $title = 			('Treseptuagintillionaire');	
-		WHEN length($($total_cash))>=297 AND length($($total_cash)) < 		301 THEN 		 SET $title = 			('Duoseptuagintillionaire');	
-		WHEN length($($total_cash))>=293 AND length($($total_cash)) < 		297 THEN 		 SET $title = 			('Unseptuagintillionaire');	
-		WHEN length($($total_cash))>=289 AND length($($total_cash)) < 		293 THEN 		 SET $title = 			('Septuagintillionaire');	
-		WHEN length($($total_cash))>=285 AND length($($total_cash)) < 		289 THEN 		 SET $title = 			('Novemsexagintillionaire');	
-		WHEN length($($total_cash))>=281 AND length($($total_cash)) < 		285 THEN 		 SET $title = 			('Octosexagintillionaire');	
-		WHEN length($($total_cash))>=277 AND length($($total_cash)) < 		281 THEN 		 SET $title = 			('Septensexagintillionaire');	
-		WHEN length($($total_cash))>=273 AND length($($total_cash)) < 		277 THEN 		 SET $title = 			('Sexsexagintillionaire');	
-		WHEN length($($total_cash))>=269 AND length($($total_cash)) < 		273 THEN 		 SET $title = 			('Quinsexagintillionaire');	
-		WHEN length($($total_cash))>=265 AND length($($total_cash)) < 		269 THEN 		 SET $title = 			('Quattuorsexagintillionaire');	
-		WHEN length($($total_cash))>=261 AND length($($total_cash)) < 		265 THEN 		 SET $title = 			('Tresexagintillionaire');	
-		WHEN length($($total_cash))>=257 AND length($($total_cash)) < 		261 THEN 		 SET $title = 			('Duosexagintillionaire');	
-		WHEN length($($total_cash))>=253 AND length($($total_cash)) < 		257 THEN 		 SET $title = 			('Unsexagintillionaire');	
-		WHEN length($($total_cash))>=249 AND length($($total_cash)) < 		253 THEN 		 SET $title = 			('Sexagintillionaire');	
-		WHEN length($($total_cash))>=245 AND length($($total_cash)) < 		249 THEN 		 SET $title = 			('Novemquinquagintillionaire');	
-		WHEN length($($total_cash))>=241 AND length($($total_cash)) < 		245 THEN 		 SET $title = 			('Octoquinquagintillionaire');	
-		WHEN length($($total_cash))>=237 AND length($($total_cash)) < 		241 THEN 		 SET $title = 			('Septenquinquagintillionaire');	
-		WHEN length($($total_cash))>=233 AND length($($total_cash)) < 		237 THEN 		 SET $title = 			('Sexquinquagintillionaire');	
-		WHEN length($($total_cash))>=229 AND length($($total_cash)) < 		233 THEN 		 SET $title = 			('Quinquinquagintillionaire');	
-		WHEN length($($total_cash))>=225 AND length($($total_cash)) < 		229 THEN 		 SET $title = 			('Quattuorquinquagintillionaire');	
-		WHEN length($($total_cash))>=221 AND length($($total_cash)) < 		225 THEN 		 SET $title = 			('Trequinquagintillionaire');	
-		WHEN length($($total_cash))>=217 AND length($($total_cash)) < 		221 THEN 		 SET $title = 			('Duoquinquagintillionaire');	
-		WHEN length($($total_cash))>=213 AND length($($total_cash)) < 		217 THEN 		 SET $title = 			('Unquinquagintillionaire');	
-		WHEN length($($total_cash))>=209 AND length($($total_cash)) < 		213 THEN 		 SET $title = 			('Quinquagintillionaire');	
-		WHEN length($($total_cash))>=205 AND length($($total_cash)) < 		209 THEN 		 SET $title = 			('Novemquadragintillionaire');	
-		WHEN length($($total_cash))>=201 AND length($($total_cash)) < 		205 THEN 		 SET $title = 			('Octoquadragintillionaire');	
-		WHEN length($($total_cash))>=197 AND length($($total_cash)) < 		201 THEN 		 SET $title = 			('Septenquadragintillionaire');	
-		WHEN length($($total_cash))>=193 AND length($($total_cash)) < 		197 THEN 		 SET $title = 			('Sexquadragintillionaire');	
-		WHEN length($($total_cash))>=189 AND length($($total_cash)) < 		193 THEN 		 SET $title = 			('Quinquadragintillionaire');	
-		WHEN length($($total_cash))>=185 AND length($($total_cash)) < 		189 THEN 		 SET $title = 			('Quattuorquadragintillionaire');	
-		WHEN length($($total_cash))>=181 AND length($($total_cash)) < 		185 THEN 		 SET $title = 			('Trequadragintillionaire');	
-		WHEN length($($total_cash))>=177 AND length($($total_cash)) < 		181 THEN 		 SET $title = 			('Duoquadragintillionaire');	
-		WHEN length($($total_cash))>=173 AND length($($total_cash)) < 		177 THEN 		 SET $title = 			('Unquadragintillionaire');	
-		WHEN length($($total_cash))>=169 AND length($($total_cash)) < 		173 THEN 		 SET $title = 			('Quadragintillionaire');	
-		WHEN length($($total_cash))>=165 AND length($($total_cash)) < 		169 THEN 		 SET $title = 			('Novemtrigintillionaire');	
-		WHEN length($($total_cash))>=161 AND length($($total_cash)) < 		165 THEN 		 SET $title = 			('Octotrigintillionaire');	
-		WHEN length($($total_cash))>=157 AND length($($total_cash)) < 		161 THEN 		 SET $title = 			('Septentrigintillionaire');	
-		WHEN length($($total_cash))>=153 AND length($($total_cash)) < 		157 THEN 		 SET $title = 			('Sextrigintillionaire');	
-		WHEN length($($total_cash))>=149 AND length($($total_cash)) < 		153 THEN 		 SET $title = 			('Quintrigintillionaire');	
-		WHEN length($($total_cash))>=145 AND length($($total_cash)) < 		149 THEN 		 SET $title = 			('Quattuortrigintillionaire');	
-		WHEN length($($total_cash))>=141 AND length($($total_cash)) < 		145 THEN 		 SET $title = 			('Tretrigintillionaire');	
-		WHEN length($($total_cash))>=137 AND length($($total_cash)) < 		141 THEN 		 SET $title = 			('Duotrigintillionaire');	
-		WHEN length($($total_cash))>=133 AND length($($total_cash)) < 		137 THEN 		 SET $title = 			('Untrigintillionaire');	
-		WHEN length($($total_cash))>=129 AND length($($total_cash)) < 		133 THEN 		 SET $title = 			('Trigintillionaire');	
-		WHEN length($($total_cash))>=125 AND length($($total_cash)) < 		129 THEN 		 SET $title = 			('Novemvigintillionaire');	
-		WHEN length($($total_cash))>=121 AND length($($total_cash)) < 		125 THEN 		 SET $title = 			('Octovigintillionaire');	
-		WHEN length($($total_cash))>=117 AND length($($total_cash)) < 		121 THEN 		 SET $title = 			('Septenvigintillionaire');	
-		WHEN length($($total_cash))>=113 AND length($($total_cash)) < 		117 THEN 		 SET $title = 			('Sexvigintillionaire');	
-		WHEN length($($total_cash))>=109 AND length($($total_cash)) < 		113 THEN 		 SET $title = 			('Quinvigintillionaire');	
-		WHEN length($($total_cash))>=105 AND length($($total_cash)) < 		109 THEN 		 SET $title = 			('Quattuorvigintillionaire');	
-		WHEN length($($total_cash))>=101 AND length($($total_cash)) < 		105 THEN 		 SET $title = 			('Trevigintillionaire');	
-		WHEN length($($total_cash))>=97 AND length($($total_cash)) < 		101 THEN 		 SET $title = 			('Duovigintillionaire');	
-		WHEN length($($total_cash))>=93 AND length($($total_cash)) < 		97 THEN 		 SET $title = 			('Unvigintillionaire');	
-		WHEN length($($total_cash))>=89 AND length($($total_cash)) < 		93 THEN 		 SET $title = 			('Vigintillionaire');	
-		WHEN length($($total_cash))>=85 AND length($($total_cash)) < 		89 THEN 		 SET $title = 			('Novemdecillionaire');	
-		WHEN length($($total_cash))>=81 AND length($($total_cash)) < 		85 THEN 		 SET $title = 			('Octodecillionaire');	
-		WHEN length($($total_cash))>=77 AND length($($total_cash)) < 		81 THEN 		 SET $title = 			('Septendecillionaire');	
-		WHEN length($($total_cash))>=73 AND length($($total_cash)) < 		77 THEN 		 SET $title = 			('Sexdecillionaire');	
-		WHEN length($($total_cash))>=69 AND length($($total_cash)) < 		73 THEN 		 SET $title = 			('Quindecillionaire');	
-		WHEN length($($total_cash))>=65 AND length($($total_cash)) < 		69 THEN 		 SET $title = 			('Quattuordecillionaire');	
-		WHEN length($($total_cash))>=61 AND length($($total_cash)) < 		65 THEN 		 SET $title = 			('Tredecillionaire');	
-		WHEN length($($total_cash))>=57 AND length($($total_cash)) < 		61 THEN 		 SET $title = 			('Duodecillionaire');	
-		WHEN length($($total_cash))>=53 AND length($($total_cash)) < 		57 THEN 		 SET $title = 			('Undecillionaire');	
-		WHEN length($($total_cash))>=49 AND length($($total_cash)) < 		53 THEN 		 SET $title = 			('Decillionaire');	
-		WHEN length($($total_cash))>=45 AND length($($total_cash)) < 		49 THEN 		 SET $title = 			('Nonillionaire');	
-		WHEN length($($total_cash))>=41 AND length($($total_cash)) < 		45 THEN 		 SET $title = 			('Octillionaire');	
-		WHEN length($($total_cash))>=37 AND length($($total_cash)) < 		41 THEN 		 SET $title = 			('Septillionaire');	
-		WHEN length($($total_cash))>=33 AND length($($total_cash)) < 		37 THEN 		 SET $title = 			('Sextillionaire');	
-		WHEN length($($total_cash))>=29 AND length($($total_cash)) < 		33 THEN 		 SET $title = 			('Quintillionaire');	
-		WHEN length($($total_cash))>=25 AND length($($total_cash)) < 		29 THEN 		 SET $title = 			('Quadrillionaire');	
-		WHEN length($($total_cash))>=21 AND length($($total_cash)) < 		25 THEN 		 SET $title = 			('Trillionaire');	
-		WHEN length($($total_cash))>=17 AND length($($total_cash)) < 		21 THEN 		 SET $title = 			('Billionaire');	
-		WHEN length($($total_cash))>=13 AND length($($total_cash)) < 		17 THEN 		 SET $title = 			('Millionaire');	
-        WHEN length($($total_cash))<13 							       THEN 		 SET $title = (' ');
+		WHEN length((concat('$',format($total_cash,2))))>=409 										THEN		 SET $title = 			('Centillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=405 AND length((concat('$',format($total_cash,2)))) < 		409 THEN 		 SET $title = 			('Novemnonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=401 AND length((concat('$',format($total_cash,2)))) < 		405 THEN 		 SET $title = 			('Octononagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=397 AND length((concat('$',format($total_cash,2)))) < 		401 THEN 		 SET $title = 			('Septennonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=393 AND length((concat('$',format($total_cash,2)))) < 		397 THEN 		 SET $title = 			('Sexnonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=389 AND length((concat('$',format($total_cash,2)))) < 		393 THEN 		 SET $title = 			('Quinnonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=385 AND length((concat('$',format($total_cash,2)))) < 		389 THEN 		 SET $title = 			('Quattuornonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=381 AND length((concat('$',format($total_cash,2)))) < 		385 THEN 		 SET $title = 			('Trenonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=377 AND length((concat('$',format($total_cash,2)))) < 		381 THEN 		 SET $title = 			('Duononagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=373 AND length((concat('$',format($total_cash,2)))) < 		377 THEN 		 SET $title = 			('Unnonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=369 AND length((concat('$',format($total_cash,2)))) < 		373 THEN 		 SET $title = 			('Nonagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=365 AND length((concat('$',format($total_cash,2)))) < 		369 THEN 		 SET $title = 			('Novemoctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=361 AND length((concat('$',format($total_cash,2)))) < 		365 THEN 		 SET $title = 			('Octooctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=357 AND length((concat('$',format($total_cash,2)))) < 		361 THEN 		 SET $title = 			('Septenoctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=353 AND length((concat('$',format($total_cash,2)))) < 		357 THEN 		 SET $title = 			('Sexoctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=349 AND length((concat('$',format($total_cash,2)))) < 		353 THEN 		 SET $title = 			('Quinoctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=345 AND length((concat('$',format($total_cash,2)))) < 		349 THEN 		 SET $title = 			('Quattuoroctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=341 AND length((concat('$',format($total_cash,2)))) < 		345 THEN 		 SET $title = 			('Treoctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=337 AND length((concat('$',format($total_cash,2)))) < 		341 THEN 		 SET $title = 			('Duooctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=333 AND length((concat('$',format($total_cash,2)))) < 		337 THEN 		 SET $title = 			('Unoctogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=329 AND length((concat('$',format($total_cash,2)))) < 		333 THEN 		 SET $title = 			('Octogintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=325 AND length((concat('$',format($total_cash,2)))) < 		329 THEN 		 SET $title = 			('Novemseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=321 AND length((concat('$',format($total_cash,2)))) < 		325 THEN 		 SET $title = 			('Octoseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=317 AND length((concat('$',format($total_cash,2)))) < 		321 THEN 		 SET $title = 			('Septenseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=313 AND length((concat('$',format($total_cash,2)))) < 		317 THEN 		 SET $title = 			('Sexseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=309 AND length((concat('$',format($total_cash,2)))) < 		313 THEN 		 SET $title = 			('Quinseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=305 AND length((concat('$',format($total_cash,2)))) < 		309 THEN 		 SET $title = 			('Quattuorseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=301 AND length((concat('$',format($total_cash,2)))) < 		305 THEN 		 SET $title = 			('Treseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=297 AND length((concat('$',format($total_cash,2)))) < 		301 THEN 		 SET $title = 			('Duoseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=293 AND length((concat('$',format($total_cash,2)))) < 		297 THEN 		 SET $title = 			('Unseptuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=289 AND length((concat('$',format($total_cash,2)))) < 		293 THEN 		 SET $title = 			('Septuagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=285 AND length((concat('$',format($total_cash,2)))) < 		289 THEN 		 SET $title = 			('Novemsexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=281 AND length((concat('$',format($total_cash,2)))) < 		285 THEN 		 SET $title = 			('Octosexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=277 AND length((concat('$',format($total_cash,2)))) < 		281 THEN 		 SET $title = 			('Septensexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=273 AND length((concat('$',format($total_cash,2)))) < 		277 THEN 		 SET $title = 			('Sexsexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=269 AND length((concat('$',format($total_cash,2)))) < 		273 THEN 		 SET $title = 			('Quinsexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=265 AND length((concat('$',format($total_cash,2)))) < 		269 THEN 		 SET $title = 			('Quattuorsexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=261 AND length((concat('$',format($total_cash,2)))) < 		265 THEN 		 SET $title = 			('Tresexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=257 AND length((concat('$',format($total_cash,2)))) < 		261 THEN 		 SET $title = 			('Duosexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=253 AND length((concat('$',format($total_cash,2)))) < 		257 THEN 		 SET $title = 			('Unsexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=249 AND length((concat('$',format($total_cash,2)))) < 		253 THEN 		 SET $title = 			('Sexagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=245 AND length((concat('$',format($total_cash,2)))) < 		249 THEN 		 SET $title = 			('Novemquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=241 AND length((concat('$',format($total_cash,2)))) < 		245 THEN 		 SET $title = 			('Octoquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=237 AND length((concat('$',format($total_cash,2)))) < 		241 THEN 		 SET $title = 			('Septenquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=233 AND length((concat('$',format($total_cash,2)))) < 		237 THEN 		 SET $title = 			('Sexquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=229 AND length((concat('$',format($total_cash,2)))) < 		233 THEN 		 SET $title = 			('Quinquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=225 AND length((concat('$',format($total_cash,2)))) < 		229 THEN 		 SET $title = 			('Quattuorquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=221 AND length((concat('$',format($total_cash,2)))) < 		225 THEN 		 SET $title = 			('Trequinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=217 AND length((concat('$',format($total_cash,2)))) < 		221 THEN 		 SET $title = 			('Duoquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=213 AND length((concat('$',format($total_cash,2)))) < 		217 THEN 		 SET $title = 			('Unquinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=209 AND length((concat('$',format($total_cash,2)))) < 		213 THEN 		 SET $title = 			('Quinquagintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=205 AND length((concat('$',format($total_cash,2)))) < 		209 THEN 		 SET $title = 			('Novemquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=201 AND length((concat('$',format($total_cash,2)))) < 		205 THEN 		 SET $title = 			('Octoquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=197 AND length((concat('$',format($total_cash,2)))) < 		201 THEN 		 SET $title = 			('Septenquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=193 AND length((concat('$',format($total_cash,2)))) < 		197 THEN 		 SET $title = 			('Sexquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=189 AND length((concat('$',format($total_cash,2)))) < 		193 THEN 		 SET $title = 			('Quinquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=185 AND length((concat('$',format($total_cash,2)))) < 		189 THEN 		 SET $title = 			('Quattuorquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=181 AND length((concat('$',format($total_cash,2)))) < 		185 THEN 		 SET $title = 			('Trequadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=177 AND length((concat('$',format($total_cash,2)))) < 		181 THEN 		 SET $title = 			('Duoquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=173 AND length((concat('$',format($total_cash,2)))) < 		177 THEN 		 SET $title = 			('Unquadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=169 AND length((concat('$',format($total_cash,2)))) < 		173 THEN 		 SET $title = 			('Quadragintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=165 AND length((concat('$',format($total_cash,2)))) < 		169 THEN 		 SET $title = 			('Novemtrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=161 AND length((concat('$',format($total_cash,2)))) < 		165 THEN 		 SET $title = 			('Octotrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=157 AND length((concat('$',format($total_cash,2)))) < 		161 THEN 		 SET $title = 			('Septentrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=153 AND length((concat('$',format($total_cash,2)))) < 		157 THEN 		 SET $title = 			('Sextrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=149 AND length((concat('$',format($total_cash,2)))) < 		153 THEN 		 SET $title = 			('Quintrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=145 AND length((concat('$',format($total_cash,2)))) < 		149 THEN 		 SET $title = 			('Quattuortrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=141 AND length((concat('$',format($total_cash,2)))) < 		145 THEN 		 SET $title = 			('Tretrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=137 AND length((concat('$',format($total_cash,2)))) < 		141 THEN 		 SET $title = 			('Duotrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=133 AND length((concat('$',format($total_cash,2)))) < 		137 THEN 		 SET $title = 			('Untrigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=129 AND length((concat('$',format($total_cash,2)))) < 		133 THEN 		 SET $title = 			('Trigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=125 AND length((concat('$',format($total_cash,2)))) < 		129 THEN 		 SET $title = 			('Novemvigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=121 AND length((concat('$',format($total_cash,2)))) < 		125 THEN 		 SET $title = 			('Octovigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=117 AND length((concat('$',format($total_cash,2)))) < 		121 THEN 		 SET $title = 			('Septenvigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=113 AND length((concat('$',format($total_cash,2)))) < 		117 THEN 		 SET $title = 			('Sexvigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=109 AND length((concat('$',format($total_cash,2)))) < 		113 THEN 		 SET $title = 			('Quinvigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=105 AND length((concat('$',format($total_cash,2)))) < 		109 THEN 		 SET $title = 			('Quattuorvigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=101 AND length((concat('$',format($total_cash,2)))) < 		105 THEN 		 SET $title = 			('Trevigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=97 AND length((concat('$',format($total_cash,2)))) < 		101 THEN 		 SET $title = 			('Duovigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=93 AND length((concat('$',format($total_cash,2)))) < 		97 THEN 		 SET $title = 			('Unvigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=89 AND length((concat('$',format($total_cash,2)))) < 		93 THEN 		 SET $title = 			('Vigintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=85 AND length((concat('$',format($total_cash,2)))) < 		89 THEN 		 SET $title = 			('Novemdecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=81 AND length((concat('$',format($total_cash,2)))) < 		85 THEN 		 SET $title = 			('Octodecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=77 AND length((concat('$',format($total_cash,2)))) < 		81 THEN 		 SET $title = 			('Septendecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=73 AND length((concat('$',format($total_cash,2)))) < 		77 THEN 		 SET $title = 			('Sexdecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=69 AND length((concat('$',format($total_cash,2)))) < 		73 THEN 		 SET $title = 			('Quindecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=65 AND length((concat('$',format($total_cash,2)))) < 		69 THEN 		 SET $title = 			('Quattuordecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=61 AND length((concat('$',format($total_cash,2)))) < 		65 THEN 		 SET $title = 			('Tredecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=57 AND length((concat('$',format($total_cash,2)))) < 		61 THEN 		 SET $title = 			('Duodecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=53 AND length((concat('$',format($total_cash,2)))) < 		57 THEN 		 SET $title = 			('Undecillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=49 AND length((concat('$',format($total_cash,2)))) < 		53 THEN 		 SET $title = 			('Decillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=45 AND length((concat('$',format($total_cash,2)))) < 		49 THEN 		 SET $title = 			('Nonillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=41 AND length((concat('$',format($total_cash,2)))) < 		45 THEN 		 SET $title = 			('Octillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=37 AND length((concat('$',format($total_cash,2)))) < 		41 THEN 		 SET $title = 			('Septillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=33 AND length((concat('$',format($total_cash,2)))) < 		37 THEN 		 SET $title = 			('Sextillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=29 AND length((concat('$',format($total_cash,2)))) < 		33 THEN 		 SET $title = 			('Quintillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=25 AND length((concat('$',format($total_cash,2)))) < 		29 THEN 		 SET $title = 			('Quadrillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=21 AND length((concat('$',format($total_cash,2)))) < 		25 THEN 		 SET $title = 			('Trillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=17 AND length((concat('$',format($total_cash,2)))) < 		21 THEN 		 SET $title = 			('Billionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=13 AND length((concat('$',format($total_cash,2)))) < 		17 THEN 		 SET $title = 			('Millionaire');	
+        WHEN length((concat('$',format($total_cash,2))))<13 							       THEN 		 SET $title = (' ');
 
 
 
@@ -366,7 +262,7 @@ case
 	SET $current_level = ( select level from click where active=1),
 		$current_mult = ( select mult from click where active=1);
 		-- UI				
-select  $title as'',$($total_cash) as cash, concat('$', format($current_mult,2)) as CPS, $clicks as clicks, $current_level as level, $system as message;
+select  $title as'',concat('$',format($total_cash,2)) as cash, concat('$', format($current_mult,2)) as CPS, $clicks as clicks, $current_level as level, $system as message;
 
  END //
  delimiter ;
