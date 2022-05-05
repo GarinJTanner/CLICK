@@ -119,7 +119,7 @@ set $autoclick = (select autoclick from click where active=1);
 
 						   
 	CASE WHEN (select sum(clicks) from click where id!=1)>= $thresh4 and $thresh_init = 3 THEN
-                UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, THRESH = $thresh_next, level = $next_level, mult = $current_mult*10, thresh_init = 0, active=1 WHERE id=$active_switch;
+                UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, THRESH = $thresh_next, level = $next_level, mult = $current_mult*2.5, thresh_init = 0, active=1 WHERE id=$active_switch;
                 SET $system = 'LEVEL UP!';
                 insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$next_level,$clickmult,0,$thresh_next);
                 UPDATE click SET active=0 WHERE id=$active;
@@ -130,21 +130,21 @@ set $autoclick = (select autoclick from click where active=1);
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh3 and $thresh_init = 2 THEN
 				SET $system = 'ADDED MULTIPLIER';
                 insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
-				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, mult = $current_mult*5,thresh_init = 3, active=1 WHERE id=$active_switch;
+				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, mult = $current_mult*2.5,thresh_init = 3, active=1 WHERE id=$active_switch;
                 UPDATE click SET active=0 WHERE id=$active;
                SET $thresh_init = (select thresh_init from click where id=$active_switch);
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh2 and $thresh_init = 1 THEN
 				SET $system = (select 'ADDED MULTIPLIER'); 
                 insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
-				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, mult = $current_mult*2.5,thresh_init = 2, active=1 WHERE id=$active_switch;
+				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, mult = $current_mult*2.5,thresh_init = 2, active=1 WHERE id=$active_switch;
                 UPDATE click SET active=0 WHERE id=$active;
                 SET $thresh_init = (select thresh_init from click where id=$active_switch);
             
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh1 and $thresh_init = 0 THEN
 				insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
-				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, mult = $current_mult*1.5,thresh_init = 1, active = 1 WHERE id=$active_switch;	
+				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, mult = $current_mult*2.5,thresh_init = 1, active = 1 WHERE id=$active_switch;	
                 UPDATE click SET active=0 WHERE id=$active;
                 SET $system = (select 'You may now purchase clicks by typing "call buyclick(x)". Clicks are $50 each, enter the desired amount in (x)');
                 SET $thresh_init = (select thresh_init from click where id=$active_switch);
