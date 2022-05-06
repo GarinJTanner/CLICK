@@ -29,7 +29,7 @@ auto_increment=2 engine=myisam;
 					
                   
 insert into click (id,clicks,cash,time,tmult,cspent)								  							 		 values (1,0,'$0.00',0,0,0);
-insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init,active,created_at) values (2,0,'$0.00',0,1,0,0,1,1,1,1,0,1,'2022-05-03 16:51:57');
+insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init,active,created_at) values (2,0,'$0.00',0,1,0,0,1,1,1,1,0,1,current_timestamp);
 insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init) 		 			 values (3,0,'$0.00',0,1,0,0,1,1,1,1,0);  
 
 
