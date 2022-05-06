@@ -12,7 +12,6 @@ create table click
 (id BIGINT UNSIGNED auto_increment primary key,
 	clicks LONGTEXT,
     cash LONGTEXT,
-    spent LONGTEXT,
     time LONGTEXT,
     mult LONGTEXT,
     tmult LONGTEXT,
@@ -29,10 +28,9 @@ auto_increment=2 engine=myisam;
 
 					
                   
-insert into click (id,clicks,cash,spent,time,tmult,cspent) 															 values (1,0,'$0.00','$0.00',0,0,0);
---                  1	                 5                      9
-insert into click (id,clicks,cash,spent,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init,active,created_at) values (2,0,'$0.00','$0.00',0,1,0,0,1,1,1,1,0,1,current_timestamp);
-insert into click (id,clicks,cash,spent,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init) 		 			 values (3,0,'$0.00','$0.00',0,1,0,0,1,1,1,1,0);  
+insert into click (id,clicks,cash,time,tmult,cspent)								  							 		 values (1,0,'$0.00',0,0,0);
+insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init,active,created_at) values (2,0,'$0.00',0,1,0,0,1,1,1,1,0,1,'2022-05-03 16:51:57');
+insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init) 		 			 values (3,0,'$0.00',0,1,0,0,1,1,1,1,0);  
 
 
 
@@ -41,18 +39,13 @@ end //
 DELIMITER ;
 call restart; 							
 
--- CLICK --
 
-	
-    
+-- CLICK --
 DROP PROCEDURE IF EXISTS click;
 DELIMITER //
 CREATE PROCEDURE click()
 begin 
 DECLARE $active,$active_switch,$autoclick,$autoclickamount,$clicks,$clicker,$click_count,$clickmult,$current_cash,$current_level,$current_mult,$current_spent,$current_time,$current_tmult,$next_level,$system,$thresh,$thresh1,$thresh2,$thresh3,$thresh4,$thresh_init,$thresh_next,$title,$total_cash,$total_spent,$total_time,$total_tmult LONGTEXT;
-
-
-
 
 
 -- ACTIVE
@@ -121,7 +114,7 @@ set $autoclick = (select autoclick from click where active=1);
 	CASE WHEN (select sum(clicks) from click where id!=1)>= $thresh4 and $thresh_init = 3 THEN
                 UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, THRESH = $thresh_next, level = $next_level, mult = $current_mult*2.5, thresh_init = 0, active=1 WHERE id=$active_switch;
                 SET $system = 'LEVEL UP!';
-                insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$next_level,$clickmult,0,$thresh_next);
+                insert into click (clicks,cash,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00',0,0,$current_mult,0,$next_level,$clickmult,0,$thresh_next);
                 UPDATE click SET active=0 WHERE id=$active;
                 
                SET $thresh_init = (select thresh_init from click where id=$active_switch);
@@ -129,21 +122,21 @@ set $autoclick = (select autoclick from click where active=1);
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh3 and $thresh_init = 2 THEN
 				SET $system = '2.5x MULTIPLIER';
-                insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
+                insert into click (clicks,cash,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
 				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, mult = $current_mult*2.5,thresh_init = 3, active=1 WHERE id=$active_switch;
                 UPDATE click SET active=0 WHERE id=$active;
                SET $thresh_init = (select thresh_init from click where id=$active_switch);
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh2 and $thresh_init = 1 THEN
 				SET $system = (select '2.5x MULTIPLIER'); 
-                insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
+                insert into click (clicks,cash,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
 				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, mult = $current_mult*2.5,thresh_init = 2, active=1 WHERE id=$active_switch;
                 UPDATE click SET active=0 WHERE id=$active;
                 SET $thresh_init = (select thresh_init from click where id=$active_switch);
             
                 
 		WHEN (select sum(clicks) from click where id!=1) >= $thresh1 and $thresh_init = 0 THEN
-				insert into click (clicks,cash,spent,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00','$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
+				insert into click (clicks,cash,time,tmult,mult,cspent,level,clickmult,thresh_init,thresh) values (0,'$0.00',0,0,$current_mult,0,$current_level,$clickmult,0,$thresh);
 				UPDATE click SET clickmult = $clickmult, autoclick = $autoclick, created_at = current_timestamp, mult = $current_mult*2.5,thresh_init = 1, active = 1 WHERE id=$active_switch;	
                 UPDATE click SET active=0 WHERE id=$active;
                 SET $system = (select '2.5x MULTIPLIER');
@@ -152,7 +145,7 @@ set $autoclick = (select autoclick from click where active=1);
             END CASE;
        
 case										
-		WHEN length((concat('$',format($total_cash,2))))>=409 										THEN		 SET $title = 			('Centillionaire');	
+		WHEN length((concat('$',format($total_cash,2))))>=409 																THEN		 SET $title = 			('Centillionaire');	
 		WHEN length((concat('$',format($total_cash,2))))>=405 AND length((concat('$',format($total_cash,2)))) < 		409 THEN 		 SET $title = 			('Novemnonagintillionaire');	
 		WHEN length((concat('$',format($total_cash,2))))>=401 AND length((concat('$',format($total_cash,2)))) < 		405 THEN 		 SET $title = 			('Octononagintillionaire');	
 		WHEN length((concat('$',format($total_cash,2))))>=397 AND length((concat('$',format($total_cash,2)))) < 		401 THEN 		 SET $title = 			('Septennonagintillionaire');	
