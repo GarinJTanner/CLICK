@@ -3,18 +3,18 @@ DELIMITER //
 CREATE PROCEDURE autoclick()
 
 BEGIN
-DECLARE $autoclick_cnt,$autoclick_cost,$current_active,$active_switch,$after_purchase,$clickmult,$current_cash,$current_time,$current_spent,$current_mult,$current_tmult,$purchase_cost,$purchase_diff,$purchase_time,$system,$thresh,$time_case,$time_cost,$total_cash,$total_spent,$total_mult,$total_tmult,$total_time,$wallet LONGTEXT; 
+DECLARE $autoclick_cnt,$autoclick_cost,$current_active,$active_switch,$after_purchase,$clickmult,$current_cash,$current_time,$current_spent,$current_mult,$current_tmult,$purchase_cost,$purchase_diff,$purchase_time,$system,$thresh,$time_case,$time_cost,$total_autoclick,$total_cash,$total_spent,$total_mult,$total_tmult,$total_time,$wallet LONGTEXT; 
 
 
 	CALL CLICK;
  	-- GLOBAL  
             SET $thresh = (select thresh from click where active = 1),
-				$total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-				$total_spent = (select sum(cspent) from click WHERE id!=1),
+		$total_time = (select sum(time) from click where id!=1),
+		$total_tmult = (select sum(tmult) from click WHERE id!=1),
+		$total_spent = (select sum(cspent) from click WHERE id!=1),
                 $total_cash = (select sum($total_tmult-$total_spent));
-			SET $autoclick_cnt = (select floor($total_cash/($thresh*1000))),
-				$autoclick_cost = (select $autoclick_cnt*($thresh*1000));
+	    SET $autoclick_cnt = (select floor($total_cash/($thresh*1000))),
+		$autoclick_cost = (select $autoclick_cnt*($thresh*1000));
                 
 			UPDATE click SET cash = concat('$',format($total_cash,2)), 
                              time = $total_time,
@@ -27,15 +27,16 @@ DECLARE $autoclick_cnt,$autoclick_cost,$current_active,$active_switch,$after_pur
 case when $total_cash >= $autoclick_cost THEN
 			update click set cspent = cspent + $autoclick_cost, autoclick = autoclick + 1*$autoclick_cnt, updated_at = current_timestamp, cash = (select concat('$',(format($current_cash,2)))) WHERE active = 1;
 			
-           SET $total_mult = (select sum($current_time*$current_mult)),
-				$current_cash = (select sum($total_tmult-$current_spent)),
-                $current_time = (select replace(sum($wallet-$autoclick_cost/$current_mult),'-','')),
-                $total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-				$total_spent = (select sum(cspent) from click WHERE id!=1),
-                $total_cash = (select sum($total_tmult-$total_spent)),
-                $wallet = CONCAT('$',(FORMAT($total_cash,2))),
-                $system = concat('Purchase successful. ',format($autoclick_cnt,0),' additional autoclick(s) for $',(select format(sum($autoclick_cost),2)),'. You will now automatically click every 10 seconds.');
+           SET $clickmult = (select $total_mult = (select sum($current_time*$current_mult)),
+	       $current_cash = (select sum($total_tmult-$current_spent)),
+               $current_time = (select replace(sum($wallet-$autoclick_cost/$current_mult),'-','')),
+	       $total_autoclick = (select sum(autoclick) from click where id!=1),
+               $total_time = (select sum(time) from click where id!=1),
+	       $total_tmult = (select sum(tmult) from click WHERE id!=1),
+	       $total_spent = (select sum(cspent) from click WHERE id!=1),
+               $total_cash = (select sum($total_tmult-$total_spent)),
+               $wallet = CONCAT('$',(FORMAT($total_cash,2))),
+               $system = concat('Purchase successful. ',format($autoclick_cnt,0),' additional autoclick(s) for $',(select format(sum($autoclick_cost),2)),'. .');
             
 			UPDATE click SET time = $total_time, tmult = $total_mult, cash = $wallet, cspent = $total_spent+$autoclick_cost WHERE id=1;           
 
