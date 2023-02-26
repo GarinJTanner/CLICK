@@ -12,7 +12,7 @@ call restart;
 
 Use the click procedure to generate clicks and level up. There are 4 click checkpoints, or thresholds, per level: 25, 50, 75, 100. Each threshold grants additional cash per second. Once you reach the fourth threshold, you level up and the thresholds are multiplied by 10. So, the next phase is 250, 500, 750, 1000. This repeats infinitely.
 
-| Clicks  | Cash / Sec Multiplier |
+| Clicks  | Threshold |
 | ------------- | ------------- |
 | 0  | Thresh 0  |
 | 25  | Thresh 1 |
@@ -23,7 +23,6 @@ Use the click procedure to generate clicks and level up. There are 4 click check
 | 500  | Thresh 2  |
 | 750  | Thresh 3  |
 | 1000  | Thresh 0  |
-
 
 
 ### Buyclick
