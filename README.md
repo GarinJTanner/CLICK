@@ -14,15 +14,18 @@ Use the click procedure to generate clicks and level up. There are 4 click check
 
 | Clicks  | Threshold |
 | ------------- | ------------- |
-| 0  | Thresh 0  |
+| 0  | Thresh 1  |
 | 25  | Thresh 1 |
-| 50  | Thresh 2  |
-| 75  | Thresh 3  |
-| 100  | Thresh 0  |
-| 250  | Thresh 1  |
-| 500  | Thresh 2  |
-| 750  | Thresh 3  |
-| 1000  | Thresh 0  |
+| 50  | Thresh 1  |
+| 75  | Thresh 1  |
+| 100  | Thresh 10  |
+| 250  | Thresh 10  |
+| 500  | Thresh 10  |
+| 750  | Thresh 10  |
+| 2500  | Thresh 100  |
+| 5000  | Thresh 100  |
+| 7500  | Thresh 100  |
+| 10000  | Thresh 100  |
 
 
 ### Buyclick
