@@ -1,7 +1,7 @@
 # CLICK
 An infinitely generating clicker game, built in MySQL. Inspired by games like, "Cookie Clicker," and "Adventure Capitalist." 
 
-You begin the game earning $1.00 per second. As you click, you earn more dollars per second. This information is stored in a single table using incrementing thresholds to document changes in time and money. Each row illustrates the time spent, changes in currency, cash-time multipliers, and a few other variables. This allows for the procedure to virtually progress even while the server is offline.
+You begin the game earning $1.00 per second. As you click, you additional money per second. This information is stored in a single table using incrementing thresholds to document changes in time and money. Each row illustrates the time spent, changes in currency, cash-time multipliers, and a few other variables. This allows for the procedure to virtually progress even while the server is offline.
 
 ## General Info
 Commands:
