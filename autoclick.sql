@@ -78,7 +78,7 @@ when $autoclick_cnt < 1 or $autoclick_cnt is NULL THEN
 					$current_mult = (select mult from click where active=1),
                     $total_cash = (select sum($total_tmult-$total_spent)),
                     $total_spent = (select sum(cspent) from click WHERE id!=1),
-                    $purchase_diff = (select abs($total_cash-(($click_mult*$current_thresh)))),
+                    $purchase_diff = (select abs($total_cash-(($click_mult*($current_thresh*1000))))),
 					$purchase_time = (select $purchase_diff/$current_mult),
 					$wallet = CONCAT('$',(select FORMAT($total_cash,2)));
 					
