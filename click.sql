@@ -78,7 +78,8 @@ CASE WHEN $autoclick >=1 THEN
 							 clickmult = $clickmult,
 						     time = $current_time, 
                              tmult = $current_tmult,
-                             cash = concat('$',format($current_cash,2))
+                             cash = concat('$',format($current_cash,2)),
+			     updated_at = current_timestamp
                              WHERE active = 1;
             
             
@@ -103,7 +104,8 @@ CASE WHEN $autoclick >=1 THEN
 							 cash = concat('$',format($total_cash,2)), 
                              time = $total_time,
                              tmult = $total_tmult,
-                             cspent = $total_spent
+                             cspent = $total_spent,
+			     updated_at = current_timestamp
                              WHERE id=1;  
 
 set $autoclick = (select autoclick from click where active=1);
