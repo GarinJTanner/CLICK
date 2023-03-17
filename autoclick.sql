@@ -7,18 +7,17 @@ DECLARE $click_mult,$current_cash,$current_time,$current_spent,$current_mult,$cu
 
 
 	-- ACTIVE
-       		SET $current_time = (select timestampdiff(second,created_at, current_timestamp()) from click WHERE active=1),
-                $current_mult = (select mult from click WHERE active=1),
-				$current_tmult = (select sum($current_time*$current_mult)),
-                $current_spent = (select cspent from click where active=1),
-                $current_cash = (select sum($current_tmult-$current_spent));
+SET    $current_time = (select timestampdiff(second,created_at, current_timestamp()) from click WHERE active=1),
+       $current_mult = (select mult from click WHERE active=1),
+       $current_tmult = (select sum($current_time*$current_mult)),
+       $current_spent = (select cspent from click where active=1),
+       $current_cash = (select sum($current_tmult-$current_spent));
 			
-			UPDATE click 
-SET 
-    time = $current_time,
-    mult = $current_mult,
-    tmult = $current_tmult,
-    cash = (SELECT CONCAT('$', (FORMAT($current_cash, 2))))
+UPDATE click 
+SET    time = $current_time,
+       mult = $current_mult,
+       tmult = $current_tmult,
+       cash = (SELECT CONCAT('$', (FORMAT($current_cash, 2))))
 WHERE
     active = 1;
        
@@ -26,33 +25,33 @@ WHERE
                     
 	-- TOTAL   
        
-            SET $total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-                $total_spent = (select sum(cspent) from click WHERE id!=1),
-                $total_cash = (select sum($total_tmult-$total_spent)),
-                $wallet = CONCAT('$',(FORMAT($total_cash,2)));
+SET    $total_time = (select sum(time) from click where id!=1),
+       $total_tmult = (select sum(tmult) from click WHERE id!=1),
+       $total_spent = (select sum(cspent) from click WHERE id!=1),
+       $total_cash = (select sum($total_tmult-$total_spent)),
+       $wallet = CONCAT('$',(FORMAT($total_cash,2)));
 
 
-			UPDATE click 
-			SET 
-				time = $total_time,
-				tmult = $total_mult,
-				cash = $wallet,
-				cspent = $total_spent
-			WHERE
-				id = 1;           
+UPDATE click 
+SET  time = $total_time,
+     tmult = $total_mult,
+     cash = $wallet,
+     cspent = $total_spent
+WHERE
+     id = 1;           
 
 
-		   SET $click_mult = (select clickmult from click where active=1),
-			   $current_thresh = (select thresh from click where active=1);
-           SET $autoclick_cnt  = (select floor($total_cash/($click_mult*($current_thresh*1000)))),
-			   $autoclick_cost  = (select $autoclick_cnt*($click_mult*($current_thresh*1000)));
+SET $click_mult = (select clickmult from click where active=1),
+    $current_thresh = (select thresh from click where active=1);
+
+SET $autoclick_cnt  = (select floor($total_cash/($click_mult*($current_thresh*1000)))),
+    $autoclick_cost  = (select $autoclick_cnt*($click_mult*($current_thresh*1000)));
 
 	-- SUCCESS --
 case when $autoclick_cnt >= 1 THEN
 
                
-			update click set cspent = cspent + $autoclick_cost, autoclick = autoclick + 1*$autoclick_cnt, cash = (select concat('$',(format($current_cash,2)))) WHERE active = 1;
+update click set cspent = cspent + $autoclick_cost, autoclick = autoclick + 1*$autoclick_cnt, cash = (select concat('$',(format($current_cash,2)))) WHERE active = 1;
 			
            SET $total_mult = (select sum($current_time*$current_mult)),
 				$current_cash = (select sum($total_tmult-$current_spent)),
@@ -61,7 +60,7 @@ case when $autoclick_cnt >= 1 THEN
 				$total_spent = (select sum(cspent) from click WHERE id!=1),
                 $total_cash = (select sum($total_tmult-$total_spent)),
                 $wallet = CONCAT('$',(FORMAT($total_cash,2))),
-                $system = concat('Purchase successful. ',format($autoclick_cnt,0),' additional click(s) for $',(select format(sum($autoclick_cost),2)),'.');
+                $system = concat('Purchase successful. ',format($autoclick_cnt,0),' additional autoclick(s) for $',(select format(sum($autoclick_cost),2)),'.');
             
 			UPDATE click 
 SET 
