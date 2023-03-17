@@ -52,7 +52,7 @@ WHERE
 case when $autoclick_cnt >= 1 THEN
 
                
-			update click set cspent = cspent + $autoclick_cost, clickmult = clickmult + 1*$autoclick_cnt, cash = (select concat('$',(format($current_cash,2)))) WHERE active = 1;
+			update click set cspent = cspent + $autoclick_cost, autoclick = autoclick + 1*$autoclick_cnt, cash = (select concat('$',(format($current_cash,2)))) WHERE active = 1;
 			
            SET $total_mult = (select sum($current_time*$current_mult)),
 				$current_cash = (select sum($total_tmult-$current_spent)),
