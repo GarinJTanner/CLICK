@@ -49,55 +49,60 @@ DECLARE $active,$active_switch,$autoclick,$autoclickamount,$clicks,$clicker,$cli
 
 
 -- ACTIVE
-			SET	$autoclick = (select format(sum((select timestampdiff(second,updated_at,current_timestamp()) from click WHERE active=1)/10),0)),
-				$autoclickamount = (select autoclick from click where active=1),
-				$clickmult = (select clickmult from click where active=1),
-				$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
-                                $current_mult = (select mult from click WHERE active=1),
-                                $current_tmult = $current_time*$current_mult,
-                                $current_spent = (select cspent from click where active=1),
-				$current_cash = $current_tmult-$current_spent,
-                                $current_level = (select level from click where active=1),
-                                $next_level = (select level + 1 from click where active=1);
+SET     $autoclick = (select format(sum((select timestampdiff(second,updated_at,current_timestamp()) from click WHERE active=1)/10),0)),
+	$autoclickamount = (select autoclick from click where active=1),
+	$clickmult = (select clickmult from click where active=1),
+	$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
+        $current_mult = (select mult from click WHERE active=1),
+        $current_tmult = $current_time*$current_mult,
+        $current_spent = (select cspent from click where active=1),
+	$current_cash = $current_tmult-$current_spent,
+        $current_level = (select level from click where active=1),
+        $next_level = (select level + 1 from click where active=1);
                 
                 
 CASE WHEN $autoclick >=1 THEN
 
-	SET $autoclick = $autoclick*$autoclickamount,
-	    $clicker = ($clickmult*$autoclick);
+SET    $autoclick = $autoclick*$autoclickamount,
+       $clicker = ($clickmult*$autoclick);
+	    
 	UPDATE click SET updated_at = current_timestamp where active=1;
-        WHEN $autoclick <1 or $autoclick is null THEN
+        
+WHEN    $autoclick <1 or $autoclick is null THEN
+	
 	SET $clicker = ($clickmult);
 
-					ELSE BEGIN END;
-					END CASE;
+ELSE BEGIN END;
+END CASE;
                 
                 
+		
        -- click         
-			UPDATE click SET clicks = clicks +1*$clicker, 
-                                         clickmult = $clickmult,
-                                         time = $current_time, 
-                                         tmult = $current_tmult,
-                                         cash = concat('$',format($current_cash,2)),
-                                         updated_at = current_timestamp
-                             WHERE active = 1;
+UPDATE    click 
+SET       clicks = clicks +1*$clicker, 
+          clickmult = $clickmult,
+          time = $current_time, 
+          tmult = $current_tmult,
+          cash = concat('$',format($current_cash,2)),
+          updated_at = current_timestamp
+          WHERE active = 1;
             
             
 -- GLOBAL
             SET $active = (select id from click WHERE active=1),
-				$active_switch = (select id from click WHERE id>$active order by id desc limit 1),
-				$clicks = (SELECT sum(clicks) from click where id!=1),
+		$active_switch = (select id from click WHERE id>$active order by id desc limit 1),
+		$clicks = (SELECT sum(clicks) from click where id!=1),
                 $click_count = (select clicks from click where active=1),
                 $thresh = (select thresh from click where active=1),
-				$thresh1 = (select sum($THRESH*25)),
-				$thresh2 = (select sum($THRESH*50)),
+		$thresh1 = (select sum($THRESH*25)),
+		$thresh2 = (select sum($THRESH*50)),
                 $thresh3 = (select sum($THRESH*75)),
                 $thresh4 = (select sum($THRESH*100)),
-				$thresh_init = (select thresh_init from click where id=$active),
+		$thresh_init = (select thresh_init from click where id=$active),
                 $thresh_next = (select thresh *10 from click where id=$active),
-				$total_time = (select sum(time) from click where id!=1),
-				$total_tmult = (select sum(tmult) from click WHERE id!=1),
-				$total_spent = (select sum(cspent) from click WHERE id!=1),
+		$total_time = (select sum(time) from click where id!=1),
+		$total_tmult = (select sum(tmult) from click WHERE id!=1),
+		$total_spent = (select sum(cspent) from click WHERE id!=1),
                 $total_cash = (select sum($total_tmult-$total_spent));
                 
 			UPDATE click SET clicks = $clicks, 
