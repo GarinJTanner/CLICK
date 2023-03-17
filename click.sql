@@ -10,27 +10,27 @@ BEGIN
 drop table if exists click; 
 create table click 
 (id BIGINT UNSIGNED auto_increment primary key,
-	clicks LONGTEXT,
+    clicks LONGTEXT,
     cash LONGTEXT,
     time LONGTEXT,
     mult LONGTEXT,
     tmult LONGTEXT,
     cspent LONGTEXT,
-	created_at datetime default current_timestamp,
+    created_at datetime default current_timestamp,
     updated_at datetime,
     level LONGTEXT,
     clickmult LONGTEXT,
     autoclick LONGTEXT,
     thresh LONGTEXT,
     thresh_init SMALLINT,
-active SMALLINT DEFAULT 0)
+    active SMALLINT DEFAULT 0)
 auto_increment=2 engine=myisam; 
 
 					
                   
 insert into click (id,clicks,cash,time,tmult,cspent)								  							 		 values (1,0,'$0.00',0,0,0);
 insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init,active,created_at) values (2,0,'$0.00',0,1,0,0,1,1,1,1,0,1,current_timestamp);
-insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init) 		 			 values (3,0,'$0.00',0,1,0,0,1,1,1,1,0);  
+insert into click (id,clicks,cash,time,mult,tmult,cspent,level,clickmult,autoclick,thresh,thresh_init)                   values (3,0,'$0.00',0,1,0,0,1,1,1,1,0);  
 
 
 
@@ -53,20 +53,20 @@ DECLARE $active,$active_switch,$autoclick,$autoclickamount,$clicks,$clicker,$cli
 				$autoclickamount = (select autoclick from click where active=1),
 				$clickmult = (select clickmult from click where active=1),
 				$current_time = (select timestampdiff(second,created_at,current_timestamp()) from click WHERE active=1),
-                $current_mult = (select mult from click WHERE active=1),
-                $current_tmult = $current_time*$current_mult,
-                $current_spent = (select cspent from click where active=1),
+                                $current_mult = (select mult from click WHERE active=1),
+                                $current_tmult = $current_time*$current_mult,
+                                $current_spent = (select cspent from click where active=1),
 				$current_cash = $current_tmult-$current_spent,
-                $current_level = (select level from click where active=1),
-                $next_level = (select level + 1 from click where active=1);
+                                $current_level = (select level from click where active=1),
+                                $next_level = (select level + 1 from click where active=1);
                 
                 
 CASE WHEN $autoclick >=1 THEN
 
 	SET $autoclick = $autoclick*$autoclickamount,
-		$clicker = ($clickmult*$autoclick);
+	    $clicker = ($clickmult*$autoclick);
 	UPDATE click SET updated_at = current_timestamp where active=1;
-    WHEN $autoclick <1 or $autoclick is null THEN
+        WHEN $autoclick <1 or $autoclick is null THEN
 	SET $clicker = ($clickmult);
 
 					ELSE BEGIN END;
@@ -75,11 +75,11 @@ CASE WHEN $autoclick >=1 THEN
                 
        -- click         
 			UPDATE click SET clicks = clicks +1*$clicker, 
-							 clickmult = $clickmult,
-						     time = $current_time, 
-                             tmult = $current_tmult,
-                             cash = concat('$',format($current_cash,2)),
-			     updated_at = current_timestamp
+                                         clickmult = $clickmult,
+                                         time = $current_time, 
+                                         tmult = $current_tmult,
+                                         cash = concat('$',format($current_cash,2)),
+                                         updated_at = current_timestamp
                              WHERE active = 1;
             
             
