@@ -61,7 +61,7 @@ DECLARE $active,$active_switch,$autoclick,$autoclickamount,$clicks,$clicker,$cli
                 $next_level = (select level + 1 from click where active=1);
                 
                 
-CASE WHEN $autoclick >=1 THEN
+CASE WHEN $autoclick >1 THEN
 
 	SET $autoclick = $autoclick*$autoclickamount,
 		$clicker = ($clickmult*$autoclick);
