@@ -61,18 +61,19 @@ SET     $autoclick = (select format(sum((select timestampdiff(second,updated_at,
         $next_level = (select level + 1 from click where active=1);
                 
                 
-CASE WHEN $autoclick >=1 THEN
+CASE WHEN $autoclick >1 and (select autoclick from click where active =1) > 1 THEN
 
 SET    $autoclick = $autoclick*$autoclickamount,
        $clicker = ($clickmult*$autoclick);
-	    
-	UPDATE click SET updated_at = current_timestamp where active=1;
+			UPDATE click SET updated_at = current_timestamp where active=1;
         
-WHEN    $autoclick <1 or $autoclick is null THEN
-	
-	SET $clicker = ($clickmult);
 
-ELSE BEGIN END;
+
+
+ELSE 	
+SET $clicker = ($clickmult);
+
+BEGIN END;
 END CASE;
                 
                 
