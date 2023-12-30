@@ -1,7 +1,7 @@
 # CLICK
 An infinitely* generating clicker game, built in MySQL. Inspired by games like "Cookie Clicker" and "Adventure Capitalist." 
 
-This project tests the limitations of MySQL. You will see that variables are declared as LONGTEXT. This is due to the limitations of the integer datatype. The game will crash as soon as you reach one centillion dollars.
+This project tests the limitations of MySQL. You will see that variables are declared as LONGTEXT. This is due to the limitations of the integer datatype. The game will crash around the time you reach one centillion dollars.
 
 You begin the game earning $1.00 per second. As you click, you earn additional cash-per-second. This information is stored in a single table using incrementing thresholds to document changes in time and money. Each row illustrates the time spent, changes in currency, cash-time multipliers, and a few other variables. This allows for the procedure to virtually progress even while the server is offline.
 
