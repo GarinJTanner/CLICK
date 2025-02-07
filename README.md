@@ -37,4 +37,4 @@ Use the click procedure to generate clicks and level up. There are 4 click check
 Increases the number of clicks per click. 
 
 ### Autoclick
-Automatically clicks every 10 seconds. Multiple autoclicks can be purchased. Is affected by the number of Buyclicks purchased.
+Automatically clicks every 10 seconds. Multiple autoclicks can be purchased. This modifier is affected by the number of Buyclicks purchased.
